@@ -1,5 +1,5 @@
 /**
- * lariska.js is a [<100 lines] micro-framework designed for rapid development of socket-based applications.
+ * lariska.js is a micro-framework designed for rapid development of socket-based applications.
  * It features routing, templating, and state management, along with configurable payload options
  * for outgoing requests, streamlining the development of real-time, interactive applications.
  */
@@ -16,21 +16,24 @@ function Lariska({store, container, pages, url}) {
   this.url = url
   this.socket = io.connect(this.url, {transports: ['websocket', 'polling']});
 
-  this.render = function(template) {
+  this.render = function(template, container=null) {
 
           data = this.store
-          console.log("Rendering template ${template}  to ${container}")
+          if (!container) {container = this.container}
+
+          console.log(`Rendering template ${template}  to ${container}`)
 
           try {
             const templateElement = document.querySelector(template);
 
             if (!templateElement) {
-              throw new Error('Template element ${template} not found');
+              throw new Error(`Template element ${template} not found`);
             }
+
 
             const outputElement = document.querySelector(container);
 
-            if (!this.container) {
+            if (!outputElement) {
               throw new Error('No element to put page into ');
             }
 
@@ -45,6 +48,7 @@ function Lariska({store, container, pages, url}) {
           }
     }
 
+
   this.go = function (state) {
 
     if (this.pages[state]) {
@@ -55,10 +59,11 @@ function Lariska({store, container, pages, url}) {
     this.state = state
   };
 
+
   this.payload = []
   this.addPayload = function(key){
      if (!this.store.hasOwnProperty(key)) {
-        throw new Error("Payload error: ${key} not in store");
+        throw new Error(`Payload error: ${key} not in store`);
      } else {
         this.payload.push(key)
      }
@@ -67,29 +72,37 @@ function Lariska({store, container, pages, url}) {
    this.emit = function(event, data={}){
      this.payload.forEach(key => data[key] = key in data ? data[key] : store[key]);
      this.socket.emit(event, data)
-     console.log("Socket event ${event} emitted")
+     console.log(`Socket event ${event} emitted`)
    }
 
    this.addHandler = function(name, func) {
        this.handlers[name] = func
-       console.log("Handler ${name} added")
+       console.log(`Handler ${name} added`)
    }
 
    this.run = function(name, data) {
 
        if (typeof this.handlers[name] !== 'function') {
-          throw new Error("Handler with name $name doesn't exist.");
+          throw new Error(`Handler with name ${name} doesn't exist.`);
       }
 
-       console.log("Handler $name running")
+       console.log(`Handler ${name} running`)
        func = this.handlers[name](data)
    }
 
-   this.on = function(event, frame=null, callback=null){
+   this.on = function(event, frame=null, callback=null, container=null){
+
 
       this.socket.on(event, (data) => {
+
+        console.log(`Socket event ${event} received`)
+        console.log(data)
+
          if (callback) { callback(data) }
-         if (frame) { this.render(frame)}
+         if (frame) {
+             this.render(frame, container)
+         }
       })
    }
 }
+
